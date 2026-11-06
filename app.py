@@ -6,7 +6,6 @@ import pandas as pd
 
 st.set_page_config(page_title="Ultimate All-Rounder Agent", page_icon="⚡", layout="centered")
 
-# सीक्रेट पासवर्ड
 MY_PASSWORD = "8899"
 
 if "auth" not in st.session_state:
@@ -28,7 +27,6 @@ st.caption("शेयर मार्केट • फैंटेसी स्�
 
 API_KEY = "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"
 
-# लाइव इंटरनेट सर्च टूल
 def search_web(query):
     try:
         with DDGS() as ddgs:
@@ -37,22 +35,9 @@ def search_web(query):
     except Exception:
         return ""
 
-# लाइव स्टॉक व क्रिप्टो डेटा टूल
-def get_finance_data(symbol):
-    try:
-        t = yf.Ticker(symbol)
-        h = t.history(period="1d")
-        if not h.empty:
-            p = h['Close'].iloc[-1]
-            return f"Market Data ({symbol}): Latest Price: ₹{p:.2f}"
-    except Exception:
-        return ""
-    return ""
-
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# चैट हिस्ट्री दिखाना
 for m in st.session_state.messages:
     with st.chat_message(m["role"]):
         st.markdown(m["content"])
@@ -88,25 +73,35 @@ if user_query:
 - बिना किसी फालतू ज्ञान या उपदेश के सीधे और सरल भाषा में सटीक उत्तर दो।
 - अगर यूजर भोजपुरी या हिंदी में पूछे, तो उसी लहजे में दोस्ताना और व्यावहारिक जवाब दो।
 """
-        
-        try:
-            client = Groq(api_key=API_KEY)
-            chat_completion = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[
-                    {"role": "system", "content": system_instruction},
-                    {"role": "user", "content": user_query}
-                ]
-            )
-            reply = chat_completion.choices[0].message.content
-            status.empty()
-            st.markdown(reply)
-            st.session_state.messages.append({"role": "assistant", "content": reply})
-        except Exception as e:
-            status.empty()
-            st.error(f"एरर आया: {e}")
 
-# चैट डाउनलोड करने का बटन
-if st.session_state.messages:
-    chat_text = "\n\n".join([f"{m['role'].upper()}: {m['content']}" for m in st.session_state.messages])
-    st.sidebar.download_button("📥 आज की बातचीत डाउनलोड करें", chat_text, file_name="my_agent_chat.txt")
+        models_to_try = [
+            "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b",
+            "llama-3.1-8b-instant",
+            "llama3-70b-8192",
+            "llama3-8b-8192"
+        ]
+
+        client = Groq(api_key=API_KEY)
+        success = False
+        for model_name in models_to_try:
+            try:
+                chat_completion = client.chat.completions.create(
+                    model=model_name,
+                    messages=[
+                        {"role": "system", "content": system_instruction},
+                        {"role": "user", "content": user_query}
+                    ]
+                )
+                reply = chat_completion.choices[0].message.content
+                status.empty()
+                st.markdown(reply)
+                st.session_state.messages.append({"role": "assistant", "content": reply})
+                success = True
+                break
+            except Exception:
+                continue
+        
+        if not success:
+            status.empty()
+            st.error("AI मॉडल लोड हो रहा है, कृपया 10 सेकंड बाद पुनः प्रश्न पूछें।")
